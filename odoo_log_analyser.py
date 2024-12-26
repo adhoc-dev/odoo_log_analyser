@@ -121,7 +121,7 @@ def _print_table(title, lines, field, value):
 def main():
     Parser = argparse.ArgumentParser()
     Parser.add_argument("logfile", type=str)
-    Parser.add_argument("-t", "--threshold", type=int, default=50)
+    Parser.add_argument("-t", "--threshold", type=float, default=50.0)
     Parser.add_argument("-s", "--severity", choices=LOG_LEVELS, default="INFO")
     Parser.add_argument("-i", "--include-no-db", action="store_true")
     Parser.add_argument("-R", "--no-requests", action="store_true")
@@ -147,9 +147,13 @@ def main():
     )
     print("\n".join(f"{level}: {len(lines)}" for level, lines in logs.items()))
     if not Args.no_requests:
-        requests = logs[REQUEST_KEY]
+        requests = logs.get(REQUEST_KEY, [])
         lines = sorted(requests, key=itemgetter("total_time"), reverse=True)[:10]
-        _print_table("Top 10 Slow requests", lines, "endpoint", "total_time")
+
+        if lines:
+            _print_table("Top 10 Slow requests", lines, "endpoint", "total_time")
+        else:
+            print("No slow requests found matching threshold.")
 
         ep_hits = defaultdict(int)
         ep_times = defaultdict(int)
@@ -168,15 +172,19 @@ def main():
                 ep_times.items(), key=itemgetter(1), reverse=True
             )[:10]
         ]
-        _print_table("Top 10 slow endpoints", lines, "endpoint", "time")
+        if lines:
+            _print_table("Top 10 slow endpoints", lines, "endpoint", "time")
+        else:
+            print("No endpoints found to display.\n")
 
         lines = [
             {"endpoint": endpoint, "hits": hits}
-            for endpoint, hits in sorted(
-                ep_hits.items(), key=itemgetter(1), reverse=True
-            )[:10]
+            for endpoint, hits in sorted(ep_hits.items(), key=itemgetter(1), reverse=True)[:10]
         ]
-        _print_table("Top 10 most hit endpoints:", lines, "endpoint", "hits")
+        if lines:
+            _print_table("Top 10 most hit endpoints:", lines, "endpoint", "hits")
+        else:
+            print("No endpoints found to display.\n")
 
 
 if __name__ == "__main__":
